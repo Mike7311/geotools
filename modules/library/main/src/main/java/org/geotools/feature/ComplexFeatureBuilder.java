@@ -192,4 +192,12 @@ public class ComplexFeatureBuilder extends FeatureBuilder<FeatureType, Feature> 
 
         valueList.add(value);
     }
+
+    public static Feature retype(Feature feature, ComplexFeatureBuilder builder) {
+        for (PropertyDescriptor descriptor : builder.getFeatureType().getDescriptors()) {
+            Property value = feature.getProperty(descriptor.getName());
+            builder.append(descriptor.getName(), value);
+        }
+        return builder.buildFeature(feature.getIdentifier().getID());
+    }
 }

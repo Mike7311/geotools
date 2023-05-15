@@ -418,10 +418,10 @@ public class FeatureTypes {
      * @param crs the crs to reproject to
      * @return answer as boolean
      */
-    public static boolean shouldReproject(SimpleFeatureType schema, CoordinateReferenceSystem crs) {
-        for (int i = 0; i < schema.getDescriptors().size(); i++) {
-            if (schema.getDescriptor(i) instanceof GeometryDescriptor) {
-                GeometryDescriptor descr = (GeometryDescriptor) schema.getDescriptor(i);
+    public static boolean shouldReproject(FeatureType schema, CoordinateReferenceSystem crs) {
+        for (PropertyDescriptor descriptor : schema.getDescriptors()) {
+            if (descriptor instanceof GeometryDescriptor) {
+                GeometryDescriptor descr = (GeometryDescriptor) descriptor;
                 if (!CRS.equalsIgnoreMetadata(crs, descr.getCoordinateReferenceSystem())
                         && CRS.isCompatible(descr.getCoordinateReferenceSystem(), crs, false)) {
                     return true;

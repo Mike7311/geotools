@@ -25,14 +25,20 @@ import org.eclipse.xsd.XSDContentTypeCategory;
 import org.eclipse.xsd.XSDDerivationMethod;
 import org.eclipse.xsd.XSDElementDeclaration;
 import org.eclipse.xsd.XSDTypeDefinition;
+import org.geotools.feature.SchemaException;
+import org.geotools.feature.TypeBuilder;
+import org.geotools.referencing.CRS;
 import org.geotools.util.logging.Logging;
 import org.geotools.xs.XSSchema;
 import org.opengis.feature.type.AttributeType;
 import org.opengis.feature.type.ComplexType;
+import org.opengis.feature.type.FeatureType;
+import org.opengis.feature.type.GeometryDescriptor;
 import org.opengis.feature.type.GeometryType;
 import org.opengis.feature.type.Name;
 import org.opengis.feature.type.PropertyDescriptor;
 import org.opengis.feature.type.PropertyType;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 /**
  * This is a set of utility methods used when <b>implementing</b> types.
@@ -140,5 +146,48 @@ public class Types extends org.geotools.feature.type.Types {
             }
         }
         return false;
+    }
+
+    public static FeatureType transform(
+            FeatureType schema,
+            CoordinateReferenceSystem crs,
+            boolean forceOnlyMissing,
+            boolean onlyIfCompatible)
+            throws SchemaException {
+        TypeBuilder tb = new TypeBuilder(new ComplexFeatureTypeFactoryImpl());
+        tb.setName(schema.getName().getLocalPart());
+        tb.setNamespaceURI(schema.getName().getNamespaceURI());
+        tb.setAbstract(schema.isAbstract());
+
+        for (PropertyDescriptor descriptor : schema.getDescriptors()) {
+            if (descriptor instanceof GeometryDescriptor) {
+                GeometryDescriptor geometryType = (GeometryDescriptor) descriptor;
+
+                tb.setMinOccurs(geometryType.getMinOccurs());
+                tb.setMaxOccurs(geometryType.getMaxOccurs());
+                tb.setNillable(geometryType.isNillable());
+                tb.setCRS(((GeometryDescriptor) descriptor).getCoordinateReferenceSystem());
+
+                if (forceOnlyMissing
+                        ? geometryType.getCoordinateReferenceSystem() == null
+                        : !onlyIfCompatible
+                                || CRS.isCompatible(
+                                        geometryType.getCoordinateReferenceSystem(), crs, false)) {
+                    tb.crs(crs);
+                }
+                tb.addBinding(geometryType.getType().getBinding(), geometryType.getType());
+
+                tb.add(geometryType);
+            } else {
+                tb.add(descriptor);
+            }
+        }
+        if (schema.getGeometryDescriptor() != null) {
+            tb.setDefaultGeometry(schema.getGeometryDescriptor().getLocalName());
+        }
+        tb.setSuper(schema.getSuper());
+
+        FeatureType featureType = tb.feature();
+        return featureType;
     }
 }
